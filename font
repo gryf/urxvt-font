@@ -20,8 +20,6 @@ use List::Util qw(first);
 # supports unicode in certain pixel sizes.  9, 10, 12, 14 are embedded
 # bitmaps, which means (Except for 10) that they lack certain unicode
 # charmaps.
-#
-# Note: the regexes will only work on xft xrdb entries
 
 #   For this script to work, ~/.Xdefauls should probably contain at
 #   least the following:
@@ -106,6 +104,37 @@ sub _resize_xft_string
       }
       $piece =~ s/pixelsize=$old_size/pixelsize=$new_size/;
     }
+
+    # Check for X11 bitmap font string
+    elsif ($piece =~ /(-[^-]+){7}-(\d+)(-[^-]+){6}/)
+    {
+      my ($old_size) =  $2;
+      my ($new_size) =  $old_size;
+      my (@fixed_sizes) = (20, 50, 60, 70, 80, 90, 100, 110, 120, 130, 140,
+                           160, 180, 200, 220, 240, 280, 320);
+      my ($fixed_default_size) = &{ sub {  my @a = sort { $a <=> $b } @_;
+                                      return ($a[$#a/2] + $a[@a/2]) / 2;}
+                                  }(@fixed_sizes); # median ...
+      my ($old_size_index) = first {
+        $fixed_sizes[$_] eq $old_size } 0..$#fixed_sizes;
+
+      # old font size is valid
+      if (defined($old_size_index))
+      {
+        # Bounds checking (as in Monaco part)
+        if ($old_size_index > 0 || $delta > 0)
+        {
+          my ($new_size_index)  = $old_size_index + $delta; # +1, equivalently
+          # 2) avoid increment of largest to non-existent larger
+          $new_size = exists($fixed_sizes[$new_size_index])
+                                          ? $fixed_sizes[$new_size_index]
+                                          : $old_size;
+        }
+      }
+      $piece =~ s/(?<first>(-[^-]+){7}-)$old_size(?<last>(-[^-]+){6})
+          /$+{first}$new_size$+{last}/x;
+    }
+
     push @resized, $piece;
   }
   return join (":", @resized);
