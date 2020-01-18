@@ -157,6 +157,11 @@ sub change_size
   }
   close XRDB_MERGE || die "bad xrdb: $! $?";
   system("xrdb -edit " . X_RESOURCES);
+
+  # Load other users resources
+  if (-e "$ENV{HOME}/.Xdefaults"){
+    system("xrdb -all ~/.Xdefaults");
+  }
 }
 
 sub on_user_command
